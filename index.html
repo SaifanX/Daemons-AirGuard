@@ -4,10 +4,53 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AirGuard - TechnoFest 2026 Project</title>
-    <meta name="description" content="Drone flight safety assistant - 2nd Prize Winner @ TechnoFest 2026" />
     
-    <!-- Environment Shim to prevent process.env crashes -->
+    <!-- Primary SEO -->
+    <title>AirGuard | 2nd Place Winner @ TechnoFest 2026 Stonehill International School</title>
+    <meta name="title" content="AirGuard - Smart Drone Flight Safety Assistant">
+    <meta name="description" content="Official 2nd Prize Winner at TechnoFest 2026 hosted by Stonehill International School. AirGuard is an AI-powered safety layer for drone pilots featuring real-time risk assessment and mission planning." />
+    <meta name="keywords" content="TechnoFest 2026, Stonehill International School, AirGuard, Drone Safety, Drone Flight Planning, AI Drone Co-Pilot, Team Daemons, Bangalore Hackathon, Drone Rules India Compliance, Stonehill Hackathon Winner">
+    <meta name="author" content="Team Daemons">
+    <meta name="robots" content="index, follow">
+
+    <!-- Favicon (Airplane SVG) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m22 2-7 20-4-9-9-4Z'/><path d='M22 2 11 13'/></svg>">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/SaifanX/Daemons-AirGuard">
+    <meta property="og:title" content="AirGuard | Award-Winning Drone Safety Assistant">
+    <meta property="og:description" content="Won 2nd Place at TechnoFest 2026, Stonehill International School. Experience the future of drone safety with our AI-integrated mission control.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/SaifanX/Daemons-AirGuard/main/preview.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="AirGuard - Stonehill TechnoFest 2026 Winner">
+    <meta property="twitter:description" content="AI-powered drone safety layer for civilian pilots. 2nd Place at Stonehill International School's TechnoFest 2026.">
+
+    <!-- JSON-LD Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "AirGuard",
+      "operatingSystem": "Web",
+      "applicationCategory": "UtilitiesApplication",
+      "description": "Smart drone flight safety assistant with AI-powered risk assessment, developed for the TechnoFest 2026 Hackathon at Stonehill International School.",
+      "awards": "2nd Prize Winner - TechnoFest 2026 State Level Hackathon (Junior Category)",
+      "provider": {
+        "@type": "Organization",
+        "name": "Stonehill International School",
+        "url": "https://www.stonehill.in/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Team Daemons"
+      }
+    }
+    </script>
+    
+    <!-- Environment Shim -->
     <script>
       window.process = { env: { API_KEY: "" } };
     </script>
@@ -44,29 +87,11 @@
               'bounce-fast': 'bounce-fast 0.2s infinite'
             },
             keyframes: {
-              scan: {
-                '0%': { top: '0%' },
-                '100%': { top: '100%' }
-              },
-              ring: {
-                '0%': { transform: 'scale(1)', opacity: '0.8' },
-                '100%': { transform: 'scale(2.5)', opacity: '0' }
-              },
-              flash: {
-                '0%': { opacity: '0', transform: 'scale(0.8)' },
-                '50%': { opacity: '0.4', transform: 'scale(1.2)' },
-                '100%': { opacity: '0', transform: 'scale(1.5)' }
-              },
-              sweep: {
-                '0%': { top: '-10%', opacity: '0' },
-                '20%': { opacity: '1' },
-                '80%': { opacity: '1' },
-                '100%': { top: '110%', opacity: '0' }
-              },
-              'bounce-fast': {
-                '0%, 100%': { transform: 'translateY(-1px) translateX(1px)' },
-                '50%': { transform: 'translateY(1px) translateX(-1px)' }
-              }
+              scan: { '0%': { top: '0%' }, '100%': { top: '100%' } },
+              ring: { '0%': { transform: 'scale(1)', opacity: '0.8' }, '100%': { transform: 'scale(2.5)', opacity: '0' } },
+              flash: { '0%': { opacity: '0', transform: 'scale(0.8)' }, '50%': { opacity: '0.4', transform: 'scale(1.2)' }, '100%': { opacity: '0', transform: 'scale(1.5)' } },
+              sweep: { '0%': { top: '-10%', opacity: '0' }, '20%': { opacity: '1' }, '80%': { opacity: '1' }, '100%': { top: '110%', opacity: '0' } },
+              'bounce-fast': { '0%, 100%': { transform: 'translateY(-1px) translateX(1px)' }, '50%': { transform: 'translateY(1px) translateX(-1px)' } }
             }
           }
         }
@@ -92,50 +117,35 @@
         font-size: 10px !important;
         text-transform: uppercase !important;
       }
-      .waypoint-icon:hover .signal-ring {
-        display: block !important;
-      }
-      @keyframes zone-pulse {
-        0% { fill-opacity: 0.1; }
-        50% { fill-opacity: 0.3; }
-        100% { fill-opacity: 0.1; }
-      }
-      .critical-zone-pulse {
-        animation: zone-pulse 3s infinite;
-      }
-      
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-      }
-      .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-
+      .waypoint-icon:hover .signal-ring { display: block !important; }
+      @keyframes zone-pulse { 0% { fill-opacity: 0.1; } 50% { fill-opacity: 0.3; } 100% { fill-opacity: 0.1; } }
+      .critical-zone-pulse { animation: zone-pulse 3s infinite; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.463.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "leaflet": "https://esm.sh/leaflet@^1.9.4",
-    "react/": "https://esm.sh/react@^19.0.0/",
-    "react": "https://esm.sh/react@^19.0.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
-    "@turf/turf": "https://esm.sh/@turf/turf@^7.1.0",
-    "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
-    "convex/": "https://esm.sh/convex@^1.17.0/",
-    "zustand": "https://esm.sh/zustand@^5.0.1",
-    "react-router-dom": "https://esm.sh/react-router-dom@^6.28.0",
-    "zustand/": "https://esm.sh/zustand@^5.0.1/"
-  }
-}
-</script>
-</head>
+    <script type="importmap">
+    {
+      "imports": {
+        "lucide-react": "https://esm.sh/lucide-react@^0.463.0",
+        "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+        "leaflet": "https://esm.sh/leaflet@^1.9.4",
+        "react/": "https://esm.sh/react@^19.0.0/",
+        "react": "https://esm.sh/react@^19.0.0",
+        "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
+        "@turf/turf": "https://esm.sh/@turf/turf@^7.1.0",
+        "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
+        "convex/": "https://esm.sh/convex@^1.17.0/",
+        "zustand": "https://esm.sh/zustand@^5.0.1",
+        "react-router-dom": "https://esm.sh/react-router-dom@^6.28.0",
+        "zustand/": "https://esm.sh/zustand@^5.0.1/"
+      }
+    }
+    </script>
+  </head>
   <body class="bg-slate-950 text-slate-100 selection:bg-aviation-orange/30">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
