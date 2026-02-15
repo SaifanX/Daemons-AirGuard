@@ -1,7 +1,9 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { RESTRICTED_ZONES } from "../data/zones";
-import * as turf from '@turf/turf';
+import { ZoneType } from "../types";
+import { lineString, polygon, booleanIntersects } from '@turf/turf';
 
 export const getCaptainCritique = async (
   userMessage: string,
@@ -14,67 +16,60 @@ export const getCaptainCritique = async (
   path?: { lat: number, lng: number }[],
   overrideApiKey?: string
 ): Promise<string> => {
-  const activeApiKey = overrideApiKey || process.env.API_KEY || '';
+  const envApiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  const activeApiKey = overrideApiKey || envApiKey || '';
 
   if (!activeApiKey) {
-    return "COMMAND_FAILURE: System offline. Provide authorization key in settings to establish tactical link.";
+    return "Please add your API key in the settings to talk to me!";
   }
 
+  // Creating instance right before call as per performance guidelines
   const ai = new GoogleGenAI({ apiKey: activeApiKey });
   
   const weatherContext = weather 
-    ? `- METAR: ${weather.condition}, ${weather.windSpeed} km/h ${weather.windDirection}`
-    : "- METAR Unavailable";
+    ? `- Weather: ${weather.condition}, Wind: ${weather.windSpeed} km/h`
+    : "- Weather not available";
 
-  const statsContext = flightStats
-    ? `- VECTORS: ${flightStats.distance} km, ${flightStats.waypoints} WPTs`
-    : "";
-
-  let zoneContext = "Clear of restricted zones.";
+  let zoneContext = "The path is clear of restricted areas.";
   if (path && path.length >= 2) {
-    const line = turf.lineString(path.map(p => [p.lng, p.lat]));
+    // Fixed with named imports
+    const line = lineString(path.map(p => [p.lng, p.lat]));
     const intersected = RESTRICTED_ZONES.filter(zone => {
-      const poly = turf.polygon([[...zone.coordinates.map(c => [c.lng, c.lat]), [zone.coordinates[0].lng, zone.coordinates[0].lat]]]);
-      return turf.booleanIntersects(line, poly);
+      if (zone.type === ZoneType.CONTROLLED) return false;
+      const polyCoords = [...zone.coordinates.map(c => [c.lng, c.lat]), [zone.coordinates[0].lng, zone.coordinates[0].lat]];
+      const poly = polygon([polyCoords as any]);
+      return booleanIntersects(line, poly);
     }).map(z => z.name);
     
-    if (intersected.length > 0) zoneContext = `ZONE_INTERSECT: ${intersected.join(", ")}`;
+    if (intersected.length > 0) zoneContext = `Danger: Path enters ${intersected.join(", ")}.`;
   }
 
   const systemInstruction = `
-    IDENTITY: You are Captain Arjun, a retired IAF Wing Commander and strict Safety Inspector for DGCA.
-    TONE: Professional, blunt, high-discipline, military-grade jargon.
+    You are a friendly flight safety helper for a student project called AirGuard.
+    Keep answers short, simple, and helpful. Use simple words. No jargon.
     
     CONTEXT:
-    - MISSION_RISK: ${riskLevel}%
-    - VIOLATIONS: ${violations.join(", ") || "None"}
-    - ASSET: ${flightDetails.model} @ ${flightDetails.altitude}m
-    - ENVIRONMENT: ${weatherContext}
-    - TELEMETRY: ${statsContext}
-    - AIRSPACE: ${zoneContext}
+    - Risk Level: ${riskLevel}%
+    - Safety Warnings: ${violations.join(", ") || "None"}
+    - Drone: ${flightDetails.model} at ${flightDetails.altitude}m
+    - Weather: ${weatherContext}
+    - Map: ${zoneContext}
 
-    PROTOCOLS:
-    1. Acknowledge user queries with "Roger" or "Negative".
-    2. If Risk > 60%, prioritize safety reprimands.
-    3. Refer to "Drone Rules 2021" specifically for Rule 31 (Zones) or Rule 33 (Altitude).
-    4. Keep output concise (<120 words).
+    Be encouraging and supportive to the user.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite-latest",
+      model: "gemini-3-flash-preview", // Low latency flash model
       contents: userMessage,
       config: {
         systemInstruction,
-        temperature: 0.7,
+        temperature: 0.5, // Faster, more consistent responses
       }
     });
 
-    return response.text || "Radio silence. Repeat message.";
+    return response.text || "I'm not sure, could you rephrase?";
   } catch (error: any) {
-    if (error.message?.includes("entity was not found")) {
-      return "AUTHENTICATION_ERROR: Provided API key is invalid or unauthorized.";
-    }
-    return "COMMS_FAILURE: Unable to reach base. Signal attenuated.";
+    return "Sorry, I'm having trouble connecting to my brain! Check your API key.";
   }
 };

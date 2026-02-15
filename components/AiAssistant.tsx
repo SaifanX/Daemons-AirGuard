@@ -1,9 +1,10 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Send, X, Bot, FileText, Loader2, Activity, ShieldAlert, Zap } from 'lucide-react';
+import { MessageSquare, Send, X, Bot, FileText, Loader2, Activity, ShieldAlert, Zap, Signal, SignalHigh, SignalLow } from 'lucide-react';
 import { useStore } from '../store';
 import { getCaptainCritique } from '../services/geminiService';
-import * as turf from '@turf/turf';
+import { lineString, length } from '@turf/turf';
 
 interface Message {
   id: string;
@@ -17,7 +18,7 @@ const AiAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([{
     id: 'init',
     sender: 'ai',
-    text: "Captain Arjun here. I'm monitoring your vectors. If you plan to breach restricted airspace, expect a reprimand. Awaiting your flight plan."
+    text: "Hey! I'm your flight assistant. I'll help check if your drone route is safe. What's the plan?"
   }]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAutoTriggeredRisk, setLastAutoTriggeredRisk] = useState(0);
@@ -33,11 +34,10 @@ const AiAssistant: React.FC = () => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // AUTO-TRIGGER LOGIC: Force deployment if risk level spikes above 50%
   useEffect(() => {
-    if (riskLevel > 50 && riskLevel > lastAutoTriggeredRisk + 10) {
+    if (riskLevel > 60 && riskLevel > lastAutoTriggeredRisk + 10) {
         if (!isOpen) setIsOpen(true);
-        handleSend("EMERGENCY_BRIEF: System risk assessment indicates unsafe flight parameters. Provide immediate safety critique.");
+        handleSend("I noticed the risk is high. Can you help me check my route?");
         setLastAutoTriggeredRisk(riskLevel);
     } else if (riskLevel < 30) {
         setLastAutoTriggeredRisk(0);
@@ -56,14 +56,16 @@ const AiAssistant: React.FC = () => {
     let flightStats;
     try {
         if (flightPath.length >= 2) {
-            const line = turf.lineString(flightPath.map(p => [p.lng, p.lat]));
+            // Fixed with named imports
+            const line = lineString(flightPath.map(p => [p.lng, p.lat]));
             flightStats = { 
-                distance: parseFloat(turf.length(line, { units: 'kilometers' }).toFixed(2)), 
+                distance: parseFloat(length(line, { units: 'kilometers' }).toFixed(2)), 
                 waypoints: flightPath.length 
             };
         }
     } catch (e) {}
 
+    // Model is already configured for flash speed in service
     const aiResponseText = await getCaptainCritique(
       textToSend,
       riskLevel,
@@ -82,62 +84,52 @@ const AiAssistant: React.FC = () => {
   };
 
   return (
-    <div className="absolute bottom-6 right-6 z-[1000] flex flex-col items-end">
+    <div className="relative pointer-events-none">
       
-      {/* Chat HUD */}
+      {/* Chat Box */}
       {isOpen && (
-        <div className="mb-4 w-[400px] h-[550px] bg-slate-900/98 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+        <div className="absolute bottom-20 right-0 w-[380px] h-[500px] bg-slate-900/95 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 pointer-events-auto">
           {/* Header */}
-          <div className="p-5 bg-slate-800/60 border-b border-slate-700 flex justify-between items-center">
+          <div className="p-4 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center relative">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full border-2 border-aviation-orange/50 p-1">
-                <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                    <Bot size={28} className="text-aviation-orange" />
-                </div>
+              <div className="w-8 h-8 rounded-full border border-aviation-orange/50 flex items-center justify-center bg-slate-950">
+                <Bot size={18} className="text-aviation-orange" />
               </div>
               <div>
-                <h3 className="font-black text-slate-100 italic tracking-tight uppercase">Captain Arjun</h3>
-                <p className="text-[9px] text-aviation-orange font-mono font-bold tracking-[0.2em]">TACTICAL SAFETY OFFICER</p>
+                <h3 className="font-bold text-slate-100 uppercase text-xs">Smart Helper</h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                   <span className="text-[8px] text-slate-400 font-mono tracking-widest uppercase">Online</span>
+                </div>
               </div>
             </div>
+            
             <button onClick={() => setIsOpen(false)} className="text-slate-500 hover:text-white transition-colors">
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
-          {/* Quick Actions HUD */}
-          <div className="px-4 py-3 bg-slate-800/30 border-b border-slate-700 flex gap-2 overflow-x-auto no-scrollbar">
-            <button 
-                onClick={() => handleSend("Request full mission briefing.")}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-bold text-slate-300 transition-all whitespace-nowrap"
-            >
-                <FileText size={12} className="text-aviation-orange" /> BRIEFING
+          {/* Quick Buttons */}
+          <div className="px-3 py-2 bg-slate-950/40 border-b border-slate-800 flex gap-2 overflow-x-auto scrollbar-hide">
+            <button onClick={() => handleSend("Summary of my route?")} disabled={isLoading} className="flex-shrink-0 flex items-center gap-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-[9px] font-bold text-slate-300 uppercase">
+                Route Summary
             </button>
-            <button 
-                onClick={() => handleSend("Analyze current violations and Rule citations.")}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-bold text-slate-300 transition-all whitespace-nowrap"
-            >
-                <ShieldAlert size={12} className="text-red-400" /> VIOLATIONS
+            <button onClick={() => handleSend("Any safety warnings?")} disabled={isLoading} className="flex-shrink-0 flex items-center gap-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-[9px] font-bold text-slate-300 uppercase">
+                Safety Check
             </button>
-            <button 
-                onClick={() => handleSend("Current battery and telemetry health check.")}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-bold text-slate-300 transition-all whitespace-nowrap"
-            >
-                <Zap size={12} className="text-yellow-400" /> HEALTH
+            <button onClick={() => handleSend("How's the drone status?")} disabled={isLoading} className="flex-shrink-0 flex items-center gap-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-[9px] font-bold text-slate-300 uppercase">
+                Drone Status
             </button>
           </div>
 
-          {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-950/30">
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${
+                <div className={`max-w-[85%] p-3 rounded-xl text-sm leading-relaxed ${
                   msg.sender === 'user' 
-                    ? 'bg-aviation-orange text-white rounded-br-none shadow-xl' 
-                    : 'bg-slate-800/80 text-slate-200 border border-slate-700/50 rounded-bl-none font-mono text-[13px]'
+                    ? 'bg-aviation-orange text-white shadow-lg' 
+                    : 'bg-slate-800/60 text-slate-200 border border-slate-700/40'
                 }`}>
                   {msg.text}
                 </div>
@@ -145,54 +137,57 @@ const AiAssistant: React.FC = () => {
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex gap-3 items-center">
-                  <Loader2 size={16} className="animate-spin text-aviation-orange" />
-                  <span className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">Consulting DGCA Registry...</span>
+                <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700 flex gap-3 items-center">
+                  <Loader2 size={12} className="animate-spin text-aviation-orange" />
+                  <span className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">Thinking...</span>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Console */}
-          <div className="p-5 bg-slate-800/40 border-t border-slate-700 flex gap-3">
+          {/* Input Area */}
+          <div className="p-3 bg-slate-800/60 border-t border-slate-700 flex gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Query safety protocol..."
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:border-aviation-orange outline-none transition-all placeholder:text-slate-600 font-mono"
+              placeholder="Ask me anything..."
+              className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:border-aviation-orange outline-none"
             />
             <button 
               onClick={() => handleSend()}
               disabled={isLoading || !input.trim()}
-              className="p-3.5 bg-aviation-orange text-white rounded-xl hover:bg-orange-600 disabled:opacity-30 transition-all shadow-lg shadow-orange-950/40"
+              className="p-2 bg-aviation-orange text-white rounded-lg hover:bg-orange-600 disabled:opacity-30 transition-all shadow-lg"
             >
-              <Send size={20} />
+              <Send size={18} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Launcher Button */}
+      {/* Toggle Button */}
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
-          className={`group flex items-center gap-4 bg-slate-900 hover:bg-slate-800 text-white p-5 rounded-2xl shadow-2xl border-2 transition-all hover:scale-105 active:scale-95 ${
-            riskLevel > 50 ? 'border-red-500 animate-pulse' : 'border-aviation-orange'
+          className={`pointer-events-auto flex items-center gap-4 bg-slate-900/90 backdrop-blur-xl hover:bg-slate-800 text-white p-3 px-5 rounded-2xl shadow-2xl border-2 transition-all hover:scale-105 active:scale-95 ${
+            riskLevel > 60 ? 'border-red-500 animate-pulse' : 'border-aviation-orange/80'
           }`}
         >
           <div className="relative">
-             <MessageSquare size={28} />
-             {riskLevel > 50 && (
-                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
+             <MessageSquare size={20} className="text-aviation-orange" />
+             {riskLevel > 60 && (
+                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                  </span>
              )}
           </div>
-          <span className="font-black text-sm tracking-widest uppercase italic pr-2">Command Link</span>
+          <div className="flex flex-col items-start leading-none">
+            <span className="font-bold text-xs uppercase">Ask Assistant</span>
+            <span className="text-[8px] font-mono text-slate-500 mt-0.5">Team Support</span>
+          </div>
         </button>
       )}
     </div>

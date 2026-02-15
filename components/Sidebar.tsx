@@ -1,14 +1,17 @@
 
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
+import { useNavigate } from 'react-router-dom';
+import { lineString, length } from '@turf/turf';
 import { 
-  Plane, Trash2, Settings, Save, 
+  Plane, Trash2, Settings as SettingsIcon, Save, 
   History, X, ChevronRight, Play, Square, 
   Target, Zap, Wind, ShieldCheck,
-  Wand2, Download, ExternalLink, Battery, Radio, Gauge, FileText, Check, LayoutDashboard, ChevronLeft, FastForward
+  Wand2, Download, ExternalLink, Battery, Radio, Gauge, FileText, Check, LayoutDashboard, ChevronLeft, FastForward, Key, Eye, EyeOff, Shield, CloudSun, Clock, Navigation2, FileJson, Map as MapIcon, Scale, AlertOctagon, Info, Trophy
 } from 'lucide-react';
+import { Coordinate, PreFlightChecklist as ChecklistType, SidebarTab } from '../types';
 import { exportToGPX, exportToKML } from '../utils/exportUtils';
-import { PreFlightChecklist as ChecklistType, SidebarTab, Coordinate } from '../types';
 
 const PathThumbnail = ({ path }: { path: Coordinate[] }) => {
   if (path.length < 2) return <div className="w-full h-full bg-slate-800 flex items-center justify-center"><Plane size={12} className="text-slate-600 opacity-20" /></div>;
@@ -46,15 +49,29 @@ const PathThumbnail = ({ path }: { path: Coordinate[] }) => {
 };
 
 const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
   const { 
     droneSettings, updateSettings, clearPath, flightPath, 
     savedMissions, saveMission, loadMission, deleteMission,
-    toggleUiElement, isSimulating, startSimulation,
-    autoFixPath, checklist, toggleChecklistItem, riskLevel,
-    sidebarTab, setSidebarTab, autoCheckChecklist
+    isSimulating, startSimulation,
+    checklist, toggleChecklistItem, 
+    sidebarTab, setSidebarTab, autoCheckChecklist,
+    userApiKey, setApiKey, weatherApiKey, setWeatherApiKey,
+    riskLevel, autoFixPath, violations
   } = useStore();
 
   const [missionName, setMissionName] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(false);
+
+  const stats = useMemo(() => {
+    if (flightPath.length < 2) return { distance: 0, eta: 0 };
+    // Fixed with named imports
+    const line = lineString(flightPath.map(p => [p.lng, p.lat]));
+    const dist = length(line, { units: 'kilometers' });
+    const time = (dist / 40) * 60; 
+    return { distance: dist.toFixed(2), eta: Math.ceil(time) };
+  }, [flightPath]);
 
   const handleSave = () => {
     if (flightPath.length === 0) return;
@@ -62,180 +79,191 @@ const Sidebar: React.FC = () => {
     setMissionName('');
   };
 
+  const handleCommitSettings = () => {
+    setSaveStatus(true);
+    setTimeout(() => setSaveStatus(false), 2000);
+  };
+
   const checklistItems: { key: keyof ChecklistType; label: string; icon: React.ReactNode }[] = [
-    { key: 'batteryChecked', label: 'Cell Voltage Check', icon: <Battery size={14} /> },
-    { key: 'propellersInspected', label: 'Propeller Structural Check', icon: <Gauge size={14} /> },
-    { key: 'gpsLock', label: 'GNSS Satellite Lock', icon: <Radio size={14} /> },
-    { key: 'regulatoryClearance', label: 'Digital Sky Permit', icon: <FileText size={14} /> },
-    { key: 'firmwareValidated', label: 'System Firmware Check', icon: <ShieldCheck size={14} /> },
+    { key: 'batteryChecked', label: 'Battery Checked', icon: <Battery size={14} /> },
+    { key: 'propellersInspected', label: 'Propellers OK', icon: <Gauge size={14} /> },
+    { key: 'gpsLock', label: 'GPS Signal Found', icon: <Radio size={14} /> },
+    { key: 'permitChecked', label: 'Rules Checked', icon: <FileText size={14} /> },
+    { key: 'softwareUpdated', label: 'Ready to Go', icon: <ShieldCheck size={14} /> },
   ];
 
   const allChecked = Object.values(checklist).every(v => v);
 
   return (
-    <div className="absolute top-4 left-4 bottom-4 w-80 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col z-[1000] text-slate-200 overflow-hidden">
-      <div className="p-6 pb-4 bg-slate-800/40 flex justify-between items-center">
+    <div className="absolute top-4 left-4 bottom-4 w-72 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col z-[1000] text-slate-200 overflow-hidden">
+      <div className="p-5 pb-3 bg-slate-800/40 flex justify-between items-center">
         <div>
-          <div className="flex items-center gap-2 mb-1 group">
-            <div className="w-8 h-8 rounded bg-aviation-orange flex items-center justify-center transition-transform group-hover:rotate-12">
-                <Plane className="text-white transform -rotate-45" size={18} />
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded bg-aviation-orange flex items-center justify-center">
+                <Plane className="text-white transform -rotate-45" size={16} />
             </div>
-            <h1 className="text-xl font-black tracking-tighter uppercase italic">AirGuard</h1>
-          </div>
-          <p className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">Tactical Operations Hub</p>
+            <h1 className="text-lg font-black italic tracking-tighter uppercase">AirGuard</h1>
+          </button>
+          <p className="text-[8px] text-slate-500 font-mono tracking-widest uppercase">TechnoFest 2026</p>
         </div>
         <button 
-          onClick={() => toggleUiElement('settings')}
-          className="p-2.5 bg-slate-800 hover:bg-aviation-orange/20 rounded-xl text-slate-400 hover:text-aviation-orange transition-all border border-slate-700"
+          onClick={() => setSidebarTab('SETTINGS')}
+          className={`p-2 rounded-xl border transition-all ${sidebarTab === 'SETTINGS' ? 'bg-aviation-orange/20 border-aviation-orange text-aviation-orange' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
         >
-          <Settings size={18} />
+          <SettingsIcon size={16} />
         </button>
       </div>
 
-      <div className="px-6 flex border-b border-slate-800">
-        {(['CONFIG', 'CHECKLIST', 'MISSIONS'] as SidebarTab[]).map(tab => (
+      <div className="px-4 flex border-b border-slate-800 overflow-x-auto scrollbar-hide">
+        {(['SETUP', 'CHECKLIST', 'SAVED', 'SAFETY', 'SETTINGS'] as SidebarTab[]).map(tab => (
            <button
              key={tab}
              onClick={() => setSidebarTab(tab)}
-             className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${
-               sidebarTab === tab 
-                ? 'border-aviation-orange text-aviation-orange' 
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-             }`}
+             className={`flex-shrink-0 px-3 py-3 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${sidebarTab === tab ? 'border-aviation-orange text-aviation-orange' : 'border-transparent text-slate-500'}`}
            >
-             {tab}
+             {tab === 'SAVED' ? 'Routes' : tab === 'SAFETY' ? 'Safety' : tab}
            </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-        {sidebarTab === 'CONFIG' && (
-          <div className="space-y-8 animate-in fade-in duration-300">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+        {sidebarTab === 'SETUP' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
             <section className="space-y-4">
-              <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <LayoutDashboard size={12} className="text-blue-400" /> Aircraft Config
-              </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Model Class</label>
-                  <select 
-                    value={droneSettings.model}
-                    onChange={(e) => updateSettings({ model: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 outline-none focus:border-aviation-orange"
-                  >
-                    <option value="Nano (<250g)">Nano (&lt;250g)</option>
-                    <option value="Micro (>2kg)">Micro (&gt;2kg)</option>
-                  </select>
+              <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Flight Stats</h3>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                  <p className="text-[7px] text-slate-500 uppercase font-black mb-1">Distance</p>
+                  <span className="text-base font-mono font-bold text-white">{stats.distance} km</span>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <label className="text-slate-400">Altitude (AGL)</label>
-                    <span className={`font-mono ${droneSettings.altitude > 120 ? 'text-red-400 animate-pulse' : 'text-aviation-orange'}`}>{droneSettings.altitude}m</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="20" 
-                    max="400" 
-                    step="10"
-                    value={droneSettings.altitude} 
-                    onChange={(e) => updateSettings({ altitude: Number(e.target.value) })} 
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-aviation-orange" 
-                  />
+                <div className="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                  <p className="text-[7px] text-slate-500 uppercase font-black mb-1">Time</p>
+                  <span className="text-base font-mono font-bold text-white">{stats.eta} min</span>
                 </div>
               </div>
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <Wand2 size={12} className="text-emerald-400" /> Mission Control
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={clearPath} className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/40 rounded-xl text-xs font-bold text-slate-400 hover:text-red-400 transition-all">
-                  <Trash2 size={14} /> Reset
-                </button>
-                <button onClick={() => setSidebarTab('MISSIONS')} className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-400 transition-all">
-                  <Save size={14} /> Save
-                </button>
+              <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Drone Options</h3>
+              <div className="space-y-4">
+                <select 
+                  value={droneSettings.model}
+                  onChange={(e) => updateSettings({ model: e.target.value as any })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 outline-none focus:border-aviation-orange"
+                >
+                  <option value="Nano (<250g)">Mini Drone</option>
+                  <option value="Micro (>2kg)">Heavy Drone</option>
+                </select>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[9px] font-bold uppercase">
+                    <label className="text-slate-400">Flight Height</label>
+                    <span className="text-aviation-orange">{droneSettings.altitude}m</span>
+                  </div>
+                  <input 
+                    type="range" min="10" max="150" step="10"
+                    value={droneSettings.altitude} 
+                    onChange={(e) => updateSettings({ altitude: Number(e.target.value) })} 
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none accent-aviation-orange" 
+                  />
+                </div>
               </div>
+            </section>
 
+            <section className="space-y-3 pt-4">
+              <button onClick={clearPath} className="w-full py-2.5 bg-slate-800 hover:bg-red-500/10 rounded-xl text-xs font-bold text-slate-500 hover:text-red-400 border border-slate-700 transition-all">Clear Route</button>
               {!isSimulating && (
-                <button onClick={startSimulation} className={`w-full py-4 rounded-xl font-bold text-xs tracking-widest transition-all flex items-center justify-center gap-3 ${allChecked && flightPath.length > 1 ? 'bg-aviation-orange text-white shadow-xl' : 'bg-slate-800 text-slate-300 hover:text-aviation-orange border border-slate-700 transition-colors'}`}>
-                  {allChecked ? <Play size={14} fill="currentColor" /> : <ShieldCheck size={14} />}
-                  {allChecked ? 'Execute Simulation' : 'Complete Checklist'}
+                <button onClick={startSimulation} className={`w-full py-3.5 rounded-xl font-bold text-xs tracking-widest transition-all ${allChecked && flightPath.length > 1 ? 'bg-aviation-orange text-white' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
+                  {allChecked ? 'Test Flight' : 'Checklist First'}
                 </button>
               )}
             </section>
           </div>
         )}
 
-        {sidebarTab === 'CHECKLIST' && (
+        {sidebarTab === 'SAFETY' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex justify-between items-center px-1">
-              <button onClick={() => setSidebarTab('CONFIG')} className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">
-                <ChevronLeft size={14} /> Return to Config
-              </button>
-              <button onClick={autoCheckChecklist} className="flex items-center gap-1.5 px-3 py-1 bg-aviation-orange/10 border border-aviation-orange/30 rounded-lg text-[9px] font-black uppercase text-aviation-orange hover:bg-aviation-orange hover:text-white transition-all">
-                <FastForward size={12} /> Master Override
-              </button>
-            </div>
-            <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
-              {checklistItems.map(item => (
-                <button key={item.key} onClick={() => toggleChecklistItem(item.key)} className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${checklist[item.key] ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-1.5 rounded-lg ${checklist[item.key] ? 'bg-emerald-500/20' : 'bg-slate-800'}`}>{item.icon}</div>
-                    <span className="text-[11px] font-bold uppercase tracking-tight">{item.label}</span>
+            <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Safety Rules</h3>
+            {violations.length === 0 ? (
+              <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-xl p-4 flex flex-col items-center gap-2 text-center">
+                <ShieldCheck size={28} className="text-emerald-400" />
+                <p className="text-xs font-bold text-emerald-400">ALL GOOD!</p>
+                <p className="text-[9px] text-slate-400">Your route follows all safety rules.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-4 text-center">
+                  <p className="text-[10px] font-bold text-red-400 uppercase">Heads Up!</p>
+                  <p className="text-[8px] text-slate-400 mt-1">{violations.length} safety warnings found.</p>
+                </div>
+                {violations.map((v, i) => (
+                  <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                    <p className="text-[9px] text-slate-400 italic">{v}</p>
                   </div>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${checklist[item.key] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-700'}`}>{checklist[item.key] && <Check size={10} className="text-white" />}</div>
-                </button>
-              ))}
-            </div>
-            {allChecked && (
-               <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3 animate-in zoom-in-95 duration-500">
-                  <ShieldCheck className="text-emerald-500" size={24} />
-                  <div><h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Flight Status: Ready</h4><p className="text-[9px] text-emerald-400/60 font-mono">ALL_SYSTEMS_OPTIMAL</p></div>
-               </div>
+                ))}
+                <button onClick={autoFixPath} className="w-full py-3 bg-aviation-orange rounded-xl text-[10px] font-bold text-white uppercase tracking-widest">Fix for Me</button>
+              </div>
             )}
-            <button onClick={startSimulation} disabled={!allChecked} className={`w-full py-4 rounded-xl font-bold text-xs tracking-widest transition-all flex items-center justify-center gap-3 ${allChecked ? 'bg-aviation-orange text-white shadow-xl' : 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50'}`}>
-              <Play size={14} fill="currentColor" /> Engage Simulation
-            </button>
           </div>
         )}
 
-        {sidebarTab === 'MISSIONS' && (
+        {sidebarTab === 'CHECKLIST' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <section className="space-y-3">
-               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Capture Mission</label>
-               <div className="flex gap-2">
-                 <input type="text" placeholder="CODE_NAME" value={missionName} onChange={(e) => setMissionName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-200 focus:border-aviation-orange outline-none" />
-                 <button onClick={handleSave} disabled={flightPath.length === 0} className="px-4 bg-aviation-orange hover:bg-orange-600 rounded-xl text-white transition-all disabled:opacity-30"><Save size={16} /></button>
-               </div>
-            </section>
-            <section className="space-y-4 pt-4 border-t border-slate-800">
-              <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><History size={12} /> Black Box Analytics</h3>
-              <div className="space-y-3">
-                {savedMissions.length === 0 ? (
-                  <div className="py-12 text-center border border-dashed border-slate-800 rounded-xl"><p className="text-[10px] text-slate-600 font-mono italic">No flights logged yet</p></div>
-                ) : (
-                  savedMissions.map(m => (
-                    <div key={m.id} className="group bg-slate-950/50 border border-slate-800 rounded-xl p-3 hover:border-aviation-orange/40 transition-all flex gap-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-800 flex-shrink-0 bg-slate-900">
-                        <PathThumbnail path={m.path} />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div className="flex justify-between items-start">
-                          <span className="text-xs font-bold text-slate-200 truncate">{m.name}</span>
-                          <button onClick={() => deleteMission(m.id)} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] font-mono">
-                          <span className={`${m.riskScore > 50 ? 'text-red-400' : 'text-emerald-400'} font-bold`}>{m.riskScore}% RISK</span>
-                          <button onClick={() => loadMission(m.id)} className="text-aviation-orange hover:text-white flex items-center gap-1 font-black">Recall <ChevronRight size={12} /></button>
-                        </div>
-                      </div>
+            <div className="flex justify-between items-center">
+              <button onClick={() => setSidebarTab('SETUP')} className="text-[8px] font-bold text-slate-500 uppercase">Back</button>
+              <button onClick={autoCheckChecklist} className="text-[8px] font-bold text-aviation-orange uppercase">Easy Check</button>
+            </div>
+            <div className="space-y-2">
+              {checklistItems.map(item => (
+                <button key={item.key} onClick={() => toggleChecklistItem(item.key)} className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all ${checklist[item.key] ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                  <span className="text-[11px] font-bold uppercase">{item.label}</span>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${checklist[item.key] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-700'}`}>{checklist[item.key] && <Check size={10} className="text-white" />}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {sidebarTab === 'SAVED' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex gap-2">
+              <input type="text" placeholder="Route Name" value={missionName} onChange={(e) => setMissionName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+              <button onClick={handleSave} className="px-3 bg-aviation-orange rounded-xl text-white"><Save size={14} /></button>
+            </div>
+            <div className="space-y-2">
+              {savedMissions.map(m => (
+                <div key={m.id} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex gap-3">
+                  <div className="w-10 h-10 rounded bg-slate-900 overflow-hidden"><PathThumbnail path={m.path} /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between">
+                      <span className="text-[11px] font-bold text-slate-200 truncate">{m.name}</span>
+                      <button onClick={() => deleteMission(m.id)} className="text-slate-600"><Trash2 size={10} /></button>
                     </div>
-                  ))
-                )}
+                    <button onClick={() => loadMission(m.id)} className="text-[9px] text-aviation-orange font-bold mt-1 uppercase">Load</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {sidebarTab === 'SETTINGS' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+             <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Configuration</h3>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] text-slate-400">Gemini Key</label>
+                  <input type="password" value={userApiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Key..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] text-slate-400">Weather Key</label>
+                  <input type="password" value={weatherApiKey} onChange={(e) => setWeatherApiKey(e.target.value)} placeholder="Key..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none" />
+                </div>
               </div>
             </section>
+            <button onClick={handleCommitSettings} className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${saveStatus ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              {saveStatus ? 'Done!' : 'Save'}
+            </button>
           </div>
         )}
       </div>

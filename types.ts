@@ -1,4 +1,5 @@
 
+
 export interface Coordinate {
   lat: number;
   lng: number;
@@ -50,7 +51,7 @@ export interface SavedMission {
 }
 
 export type MapMode = 'PAN' | 'DRAW' | 'SEARCH';
-export type SidebarTab = 'CONFIG' | 'CHECKLIST' | 'MISSIONS';
+export type SidebarTab = 'SETUP' | 'CHECKLIST' | 'SAVED' | 'SETTINGS' | 'SAFETY';
 
 export interface UiVisibility {
   sidebar: boolean;
@@ -58,20 +59,25 @@ export interface UiVisibility {
   weatherWidget: boolean;
   aiAssistant: boolean;
   settings: boolean;
+  isZenMode: boolean;
+  // Added checklist to UiVisibility to fix navigation errors
+  checklist: boolean;
 }
 
-export type SimScenario = 'STANDARD' | 'HEAVY_WEATHER' | 'HIGH_ALTITUDE' | 'EMERGENCY_LANDING';
+// Added tactical scenarios used in SimulationEngine and PlaybackControlHub
+export type SimScenario = 'STANDARD' | 'WINDY' | 'LOW_BATTERY' | 'HEAVY_WEATHER' | 'EMERGENCY_LANDING';
 
 export interface PreFlightChecklist {
   batteryChecked: boolean;
   propellersInspected: boolean;
   gpsLock: boolean;
-  regulatoryClearance: boolean;
-  firmwareValidated: boolean;
+  permitChecked: boolean;
+  softwareUpdated: boolean;
 }
 
 export interface AppState {
   flightPath: Coordinate[];
+  previewPath: Coordinate[] | null; 
   riskLevel: number;
   violations: string[];
   droneSettings: DroneSettings;
@@ -86,7 +92,7 @@ export interface AppState {
   isFixingPath: boolean;
   isInteracting: boolean; 
   
-  // Simulation State
+  // Test Flight State
   isSimulating: boolean;
   simProgress: number; 
   simPosition: Coordinate | null;
@@ -94,13 +100,16 @@ export interface AppState {
   simSpeedMultiplier: number;
   activeScenario: SimScenario;
   
-  // Persistence & Settings
+  // Saved Data
   savedMissions: SavedMission[];
   userApiKey: string;
+  weatherApiKey: string;
   
   // Actions
   addPoint: (point: Coordinate) => void;
   updatePoint: (index: number, point: Coordinate) => void;
+  setPreviewPoint: (index: number, point: Coordinate) => void; 
+  clearPreviewPath: () => void;
   removeLastPoint: () => void;
   clearPath: () => void;
   updateSettings: (settings: Partial<DroneSettings>) => void;
@@ -111,12 +120,13 @@ export interface AppState {
   setSidebarTab: (tab: SidebarTab) => void;
   toggleUi: () => void;
   toggleUiElement: (element: keyof UiVisibility) => void;
+  toggleZenMode: () => void;
   toggleChecklistItem: (item: keyof PreFlightChecklist) => void;
   autoCheckChecklist: () => void;
   autoFixPath: () => void;
   setIsInteracting: (interacting: boolean) => void;
   
-  // Simulation Actions
+  // Test Flight Actions
   startSimulation: () => void;
   stopSimulation: () => void;
   setSimProgress: (progress: number) => void;
@@ -126,9 +136,10 @@ export interface AppState {
   applyScenario: (scenario: SimScenario) => void;
   updateTelemetry: (data: Partial<TelemetryData>) => void;
 
-  // Persistence Actions
+  // Save Actions
   saveMission: (name: string) => void;
   loadMission: (id: string) => void;
   deleteMission: (id: string) => void;
   setApiKey: (key: string) => void;
+  setWeatherApiKey: (key: string) => void;
 }

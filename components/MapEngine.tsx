@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMapEvents, useMap, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMapEvents, useMap, Tooltip, CircleMarker } from 'react-leaflet';
+import * as L from 'leaflet';
 import { useStore } from '../store';
 import { RESTRICTED_ZONES } from '../data/zones';
 import { ZoneType } from '../types';
@@ -9,7 +9,7 @@ import { ZoneType } from '../types';
 const MapHandlerController = () => {
   const map = useMap();
   const mapMode = useStore(state => state.mapMode);
-  const { isSimulating, simPosition, simFollowMode } = useStore();
+  const { isSimulating, simPosition, simFollowMode, mapCenter } = useStore();
 
   useEffect(() => {
     if (mapMode === 'PAN') {
@@ -31,6 +31,11 @@ const MapHandlerController = () => {
       });
     }
   }, [simPosition, simFollowMode, isSimulating, map]);
+
+  // Handle Search Navigation
+  useEffect(() => {
+    map.setView(mapCenter, 14, { animate: true });
+  }, [mapCenter, map]);
 
   return null;
 };
@@ -94,6 +99,15 @@ const waypointIcon = (index: number, isSelected: boolean) => L.divIcon({
   iconAnchor: [14, 14],
 });
 
+const ghostIcon = () => L.divIcon({
+  className: 'ghost-waypoint-icon',
+  html: `
+    <div class="w-6 h-6 border-2 border-dashed border-cyan-400 rounded-full opacity-50 bg-cyan-900/20"></div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
 const droneGhostIcon = (heading: number, scenario: string) => {
   const isEmergency = scenario === 'EMERGENCY_LANDING';
   const isHeavyWind = scenario === 'HEAVY_WEATHER';
@@ -118,6 +132,9 @@ const droneGhostIcon = (heading: number, scenario: string) => {
 const MapEngine: React.FC = () => {
   const { 
     flightPath, 
+    previewPath,
+    setPreviewPoint,
+    clearPreviewPath,
     mapMode, 
     updatePoint, 
     selectedWaypointIndex, 
@@ -125,11 +142,12 @@ const MapEngine: React.FC = () => {
     isSimulating,
     simPosition,
     telemetry,
-    activeScenario
+    activeScenario,
+    mapCenter
   } = useStore();
   
-  const [mapCenter] = useState<[number, number]>([12.9716, 77.5946]);
   const pathPositions = useMemo(() => flightPath.map(p => [p.lat, p.lng] as [number, number]), [flightPath]);
+  const previewPositions = useMemo(() => previewPath ? previewPath.map(p => [p.lat, p.lng] as [number, number]) : null, [previewPath]);
 
   const getZoneOptions = (type: ZoneType) => {
     switch(type) {
@@ -167,22 +185,66 @@ const MapEngine: React.FC = () => {
             </Polygon>
         ))}
 
+        {previewPath && pathPositions.length > 0 && (
+          <Polyline positions={pathPositions} pathOptions={{ color: '#ffffff', weight: 1, opacity: 0.1, dashArray: '2, 5' }} />
+        )}
+
         {pathPositions.length > 0 && (
           <>
-            <Polyline positions={pathPositions} pathOptions={{ color: '#f97316', weight: 3, opacity: isSimulating ? 0.2 : 0.8, dashArray: isSimulating ? '10, 10' : '0' }} />
-            {pathPositions.map((pos, idx) => (
-              <Marker 
-                key={idx} 
-                position={pos} 
-                icon={waypointIcon(idx, selectedWaypointIndex === idx)} 
-                draggable={mapMode === 'DRAW' && !isSimulating}
-                eventHandlers={{ 
-                  dragend: (e) => {
-                    const latlng = e.target.getLatLng();
-                    updatePoint(idx, { lat: latlng.lat, lng: latlng.lng });
-                  },
-                  click: () => setSelectedWaypointIndex(idx)
-                }}
+            <Polyline 
+              positions={pathPositions} 
+              pathOptions={{ 
+                color: '#f97316', 
+                weight: 3, 
+                opacity: previewPath ? 0.2 : (isSimulating ? 0.2 : 0.8), 
+                dashArray: isSimulating ? '10, 10' : '0' 
+              }} 
+            />
+            {pathPositions.map((pos, idx) => {
+              const isDragging = previewPath !== null && selectedWaypointIndex === idx;
+              return (
+                <React.Fragment key={idx}>
+                  {isDragging && (
+                    <Marker position={pos} icon={ghostIcon()} zIndexOffset={-1} />
+                  )}
+                  <Marker 
+                    position={pos} 
+                    icon={waypointIcon(idx, selectedWaypointIndex === idx)} 
+                    draggable={mapMode === 'DRAW' && !isSimulating}
+                    eventHandlers={{ 
+                      dragstart: () => {
+                        setSelectedWaypointIndex(idx);
+                      },
+                      drag: (e) => {
+                        const latlng = e.target.getLatLng();
+                        setPreviewPoint(idx, { lat: latlng.lat, lng: latlng.lng });
+                      },
+                      dragend: (e) => {
+                        const latlng = e.target.getLatLng();
+                        updatePoint(idx, { lat: latlng.lat, lng: latlng.lng });
+                        clearPreviewPath();
+                      },
+                      click: () => setSelectedWaypointIndex(idx)
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </>
+        )}
+
+        {previewPositions && (
+          <>
+            <Polyline 
+              positions={previewPositions} 
+              pathOptions={{ color: '#22d3ee', weight: 2, dashArray: '5, 5', opacity: 0.8 }} 
+            />
+            {previewPositions.map((pos, idx) => (
+              <CircleMarker 
+                key={`preview-${idx}`} 
+                center={pos} 
+                radius={4} 
+                pathOptions={{ color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1 }}
               />
             ))}
           </>

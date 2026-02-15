@@ -4,9 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AirGuard - Drone Mission Control</title>
-    <meta name="description" content="Pre-flight safety layer for drone pilots" />
+    <title>AirGuard - TechnoFest 2026 Project</title>
+    <meta name="description" content="Drone flight safety assistant - 2nd Prize Winner @ TechnoFest 2026" />
     
+    <!-- Environment Shim to prevent process.env crashes -->
+    <script>
+      window.process = { env: { API_KEY: "" } };
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -98,6 +103,15 @@
       .critical-zone-pulse {
         animation: zone-pulse 3s infinite;
       }
+      
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -106,23 +120,24 @@
   <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.463.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
     "leaflet": "https://esm.sh/leaflet@^1.9.4",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@turf/turf": "https://esm.sh/@turf/turf@^7.3.3",
+    "react/": "https://esm.sh/react@^19.0.0/",
+    "react": "https://esm.sh/react@^19.0.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
+    "@turf/turf": "https://esm.sh/@turf/turf@^7.1.0",
     "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
-    "convex/": "https://esm.sh/convex@^1.31.7/",
-    "zustand": "https://esm.sh/zustand@^5.0.11",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3",
-    "zustand/": "https://esm.sh/zustand@^5.0.11/"
+    "convex/": "https://esm.sh/convex@^1.17.0/",
+    "zustand": "https://esm.sh/zustand@^5.0.1",
+    "react-router-dom": "https://esm.sh/react-router-dom@^6.28.0",
+    "zustand/": "https://esm.sh/zustand@^5.0.1/"
   }
 }
 </script>
 </head>
   <body class="bg-slate-950 text-slate-100 selection:bg-aviation-orange/30">
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

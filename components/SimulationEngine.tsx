@@ -1,7 +1,8 @@
 
+
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import * as turf from '@turf/turf';
+import { lineString, length, along, bearing } from '@turf/turf';
 
 const SimulationEngine: React.FC = () => {
   const { 
@@ -39,8 +40,9 @@ const SimulationEngine: React.FC = () => {
     }
 
     try {
-      const line = turf.lineString(flightPath.map(p => [p.lng, p.lat]));
-      const totalLength = turf.length(line, { units: 'meters' });
+      // Fixed with named imports
+      const line = lineString(flightPath.map(p => [p.lng, p.lat]));
+      const totalLength = length(line, { units: 'meters' });
       
       const frameDistance = deltaTime * baseDroneSpeed * simSpeedMultiplier;
       distanceRef.current += frameDistance;
@@ -53,10 +55,11 @@ const SimulationEngine: React.FC = () => {
         return;
       }
 
-      const currentPoint = turf.along(line, distanceRef.current, { units: 'meters' });
+      const currentPoint = along(line, distanceRef.current, { units: 'meters' });
       let coords = [...currentPoint.geometry.coordinates];
 
       // Physical effects
+      // Type mismatch resolved by updating SimScenario in types.ts
       if (activeScenario === 'HEAVY_WEATHER') {
           const jitter = 0.0004;
           coords[0] += (Math.random() - 0.5) * jitter;
@@ -64,8 +67,8 @@ const SimulationEngine: React.FC = () => {
       }
       
       const lookAheadDistance = Math.min(distanceRef.current + 2, totalLength);
-      const lookAheadPoint = turf.along(line, lookAheadDistance, { units: 'meters' });
-      const bearing = turf.bearing(currentPoint, lookAheadPoint);
+      const lookAheadPoint = along(line, lookAheadDistance, { units: 'meters' });
+      const b = bearing(currentPoint, lookAheadPoint);
 
       setSimProgress(progress);
       setSimPosition({ lat: coords[1], lng: coords[0] });
@@ -73,7 +76,7 @@ const SimulationEngine: React.FC = () => {
       const batteryDrain = activeScenario === 'EMERGENCY_LANDING' ? progress * 95 : progress * 5;
       updateTelemetry({
         speed: (baseDroneSpeed * simSpeedMultiplier) / 3.6, // Display in km/h effectively
-        heading: bearing,
+        heading: b,
         battery: Math.max(0, 100 - batteryDrain),
         altitudeAGL: droneSettings.altitude + (activeScenario === 'HEAVY_WEATHER' ? (Math.random() - 0.5) * 6 : 0),
         signalStrength: Math.max(5, 100 - (distanceRef.current / 120)),

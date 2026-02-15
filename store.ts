@@ -1,23 +1,25 @@
 
+
 import { create } from 'zustand';
-import { AppState, WeatherData, TelemetryData, Coordinate, SavedMission, SimScenario, PreFlightChecklist, SidebarTab } from './types';
-import { calculatePathRisk, autoFixPathCoordinates } from './utils/flightLogic';
+import { AppState, WeatherData, TelemetryData, Coordinate, SavedMission, SimScenario, PreFlightChecklist, SidebarTab, UiVisibility } from './types';
+import { calculatePathRisk, intelligentReroute } from './utils/flightLogic';
 
 const STORAGE_KEY = 'airguard_missions_v3';
 const API_KEY_STORAGE = 'airguard_api_key';
+const WEATHER_KEY_STORAGE = 'airguard_weather_key';
 
 const generateWeather = (override?: Partial<WeatherData>): WeatherData => {
-  const windSpeed = override?.windSpeed ?? Math.floor(Math.random() * 25);
-  const visibility = override?.visibility ?? 8 + Math.floor(Math.random() * 4);
-  const condition = override?.condition ?? (windSpeed > 20 ? 'Cloudy' : 'Clear');
+  const windSpeed = override?.windSpeed ?? Math.floor(Math.random() * 20);
+  const visibility = override?.visibility ?? 10;
+  const condition = override?.condition ?? 'Clear';
   
   return {
-    temp: 22 + Math.floor(Math.random() * 8),
+    temp: 22 + Math.floor(Math.random() * 5),
     windSpeed,
-    windDirection: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.floor(Math.random() * 8)],
+    windDirection: 'N',
     visibility,
     condition,
-    isFlyable: windSpeed < 30 && visibility > 2 && condition !== 'Storm'
+    isFlyable: windSpeed < 25
   };
 };
 
@@ -27,15 +29,15 @@ const initialTelemetry: TelemetryData = {
   battery: 100,
   altitudeAGL: 0,
   signalStrength: 100,
-  satCount: 18
+  satCount: 15
 };
 
 const initialChecklist: PreFlightChecklist = {
   batteryChecked: false,
   propellersInspected: false,
   gpsLock: false,
-  regulatoryClearance: false,
-  firmwareValidated: false
+  permitChecked: false,
+  softwareUpdated: false
 };
 
 const getSavedMissions = (): SavedMission[] => {
@@ -43,18 +45,19 @@ const getSavedMissions = (): SavedMission[] => {
   return saved ? JSON.parse(saved) : [];
 };
 
-export const useStore = create<AppState>()((set, get) => ({
+export const useStore = create<AppState & { mapCenter: [number, number], setMapCenter: (center: [number, number]) => void }>()((set, get) => ({
   flightPath: [],
+  previewPath: null,
   riskLevel: 0,
   violations: [],
   droneSettings: {
-    altitude: 60,
+    altitude: 40,
     model: 'Nano (<250g)',
   },
   telemetry: initialTelemetry,
   weather: generateWeather(),
   mapMode: 'DRAW',
-  sidebarTab: 'CONFIG',
+  sidebarTab: 'SETUP',
   uiVisible: true,
   uiElements: {
     sidebar: true,
@@ -62,11 +65,14 @@ export const useStore = create<AppState>()((set, get) => ({
     weatherWidget: true,
     aiAssistant: true,
     settings: false,
+    isZenMode: false,
+    checklist: false, // Initialized checklist visibility
   },
   selectedWaypointIndex: null,
   checklist: initialChecklist,
   isFixingPath: false,
   isInteracting: false,
+  mapCenter: [12.9716, 77.5946],
   
   isSimulating: false,
   simProgress: 0,
@@ -77,10 +83,12 @@ export const useStore = create<AppState>()((set, get) => ({
 
   savedMissions: getSavedMissions(),
   userApiKey: localStorage.getItem(API_KEY_STORAGE) || '',
+  weatherApiKey: localStorage.getItem(WEATHER_KEY_STORAGE) || '',
+
+  setMapCenter: (center) => set({ mapCenter: center }),
 
   addPoint: (point) => {
-    const newPath = [...get().flightPath, point];
-    set({ flightPath: newPath });
+    set(state => ({ flightPath: [...state.flightPath, point] }));
     get().calculateRisk();
   },
 
@@ -88,28 +96,40 @@ export const useStore = create<AppState>()((set, get) => ({
     const newPath = [...get().flightPath];
     if (index >= 0 && index < newPath.length) {
       newPath[index] = point;
-      set({ flightPath: newPath });
+      set({ flightPath: newPath, previewPath: null });
       get().calculateRisk();
     }
   },
 
+  setPreviewPoint: (index, point) => {
+    const preview = [...get().flightPath];
+    if (index >= 0 && index < preview.length) {
+      preview[index] = point;
+      set({ previewPath: preview });
+    }
+  },
+
+  clearPreviewPath: () => set({ previewPath: null }),
+
   removeLastPoint: () => {
-    const newPath = get().flightPath.slice(0, -1);
-    set({ flightPath: newPath });
+    set(state => ({ flightPath: state.flightPath.slice(0, -1) }));
     get().calculateRisk();
   },
 
-  clearPath: () => set({ 
-    flightPath: [], 
-    riskLevel: 0, 
-    violations: [],
-    selectedWaypointIndex: null,
-    isSimulating: false,
-    simProgress: 0,
-    simPosition: null,
-    checklist: initialChecklist,
-    isFixingPath: false
-  }),
+  clearPath: () => {
+    set({ 
+      flightPath: [], 
+      previewPath: null,
+      riskLevel: 0, 
+      violations: [],
+      selectedWaypointIndex: null,
+      isSimulating: false,
+      simProgress: 0,
+      simPosition: null,
+      checklist: initialChecklist,
+      isFixingPath: false
+    });
+  },
 
   updateSettings: (newSettings) => {
     set((state) => ({
@@ -124,25 +144,42 @@ export const useStore = create<AppState>()((set, get) => ({
     
     if (!weather.isFlyable) {
       riskScore = 100;
-      violations = [...violations, `WEATHER: Severe conditions (${weather.condition})`];
-    } else if (weather.windSpeed > 18) {
-      riskScore += 15;
-      violations = [...violations, `WIND: High crosswinds (${weather.windSpeed}km/h)`];
+      violations = [...violations, `Flight blocked: Current wind speed (${weather.windSpeed} km/h) is too dangerous.`];
     }
-
     set({ riskLevel: Math.min(riskScore, 100), violations });
   },
 
   autoFixPath: () => {
     set({ isFixingPath: true });
     setTimeout(() => {
-      const fixed = autoFixPathCoordinates(get().flightPath);
+      const fixed = intelligentReroute(get().flightPath);
       set({ flightPath: fixed, isFixingPath: false });
       get().calculateRisk();
-    }, 1200);
+    }, 500);
   },
 
-  refreshWeather: () => {
+  refreshWeather: async () => {
+    const key = get().weatherApiKey;
+    if (key) {
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=12.9716&lon=77.5946&appid=${key}&units=metric`);
+        const data = await res.json();
+        if (data.main) {
+           set({ 
+             weather: {
+                temp: Math.round(data.main.temp),
+                windSpeed: Math.round(data.wind.speed * 3.6),
+                windDirection: 'N',
+                visibility: (data.visibility || 10000) / 1000,
+                condition: data.weather[0].main,
+                isFlyable: (data.wind.speed * 3.6) < 25
+             }
+           });
+           get().calculateRisk();
+           return;
+        }
+      } catch (e) { }
+    }
     set({ weather: generateWeather() });
     get().calculateRisk();
   },
@@ -154,32 +191,45 @@ export const useStore = create<AppState>()((set, get) => ({
   toggleUiElement: (element) => set(state => ({
     uiElements: { ...state.uiElements, [element]: !state.uiElements[element] }
   })),
+  toggleZenMode: () => {
+    const isZen = !get().uiElements.isZenMode;
+    set(state => ({
+      uiElements: { 
+        ...state.uiElements, 
+        isZenMode: isZen,
+        sidebar: !isZen,
+        weatherWidget: !isZen,
+      }
+    }));
+  },
   toggleChecklistItem: (item) => set(state => ({
     checklist: { ...state.checklist, [item]: !state.checklist[item] }
   })),
-  autoCheckChecklist: () => set({
-    checklist: {
-      batteryChecked: true,
-      propellersInspected: true,
-      gpsLock: true,
-      regulatoryClearance: true,
-      firmwareValidated: true
-    }
-  }),
+  autoCheckChecklist: () => {
+    set({
+      checklist: {
+        batteryChecked: true,
+        propellersInspected: true,
+        gpsLock: true,
+        permitChecked: true,
+        softwareUpdated: true
+      }
+    });
+  },
   setIsInteracting: (interacting) => set({ isInteracting: interacting }),
 
-  // Simulation
   startSimulation: () => {
     const allChecked = Object.values(get().checklist).every(v => v);
     if (!allChecked) {
-      // Switch to checklist tab automatically
       set({ sidebarTab: 'CHECKLIST' });
       return;
     }
     if (get().flightPath.length < 2) return;
     set({ isSimulating: true, simProgress: 0 });
   },
-  stopSimulation: () => set({ isSimulating: false, simProgress: 0, simPosition: null }),
+  stopSimulation: () => {
+    set({ isSimulating: false, simProgress: 0, simPosition: null });
+  },
   setSimProgress: (progress) => set({ simProgress: progress }),
   setSimPosition: (pos) => set({ simPosition: pos }),
   toggleFollowMode: () => set(state => ({ simFollowMode: !state.simFollowMode })),
@@ -187,10 +237,11 @@ export const useStore = create<AppState>()((set, get) => ({
   
   applyScenario: (scenario) => {
     set({ activeScenario: scenario });
-    if (scenario === 'HEAVY_WEATHER') {
-      set({ weather: generateWeather({ windSpeed: 32, condition: 'Storm' }) });
-    } else if (scenario === 'EMERGENCY_LANDING') {
-      set({ telemetry: { ...get().telemetry, battery: 15 } });
+    // Updated to support tactical scenario naming conventions
+    if (scenario === 'WINDY' || scenario === 'HEAVY_WEATHER') {
+      set({ weather: generateWeather({ windSpeed: 30, condition: 'Storm' }) });
+    } else if (scenario === 'LOW_BATTERY' || scenario === 'EMERGENCY_LANDING') {
+      set({ telemetry: { ...get().telemetry, battery: 10 } });
     } else {
       set({ weather: generateWeather({ windSpeed: 5, condition: 'Clear' }) });
     }
@@ -200,9 +251,10 @@ export const useStore = create<AppState>()((set, get) => ({
   updateTelemetry: (data) => set(state => ({ telemetry: { ...state.telemetry, ...data } })),
 
   saveMission: (name) => {
+    const missionName = name || `Route ${get().savedMissions.length + 1}`;
     const mission: SavedMission = {
       id: crypto.randomUUID(),
-      name: name || `MISSION_${Date.now().toString().slice(-4)}`,
+      name: missionName,
       timestamp: Date.now(),
       path: get().flightPath,
       settings: get().droneSettings,
@@ -235,5 +287,11 @@ export const useStore = create<AppState>()((set, get) => ({
   setApiKey: (key) => {
     localStorage.setItem(API_KEY_STORAGE, key);
     set({ userApiKey: key });
+  },
+
+  setWeatherApiKey: (key) => {
+    localStorage.setItem(WEATHER_KEY_STORAGE, key);
+    set({ weatherApiKey: key });
+    get().refreshWeather();
   }
 }));

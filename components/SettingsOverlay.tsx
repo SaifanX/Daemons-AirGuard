@@ -1,31 +1,32 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import { X, Shield, Key, Eye, EyeOff, Save, CheckCircle2, AlertTriangle, Cpu } from 'lucide-react';
+import { X, Shield, Key, Eye, EyeOff, Save, CheckCircle2, AlertTriangle, Cpu, CloudSun } from 'lucide-react';
 
 const SettingsOverlay: React.FC = () => {
-  const { userApiKey, setApiKey, toggleUiElement, uiElements } = useStore();
+  const { userApiKey, setApiKey, weatherApiKey, setWeatherApiKey, toggleUiElement, uiElements } = useStore();
   const [keyInput, setKeyInput] = useState(userApiKey);
+  const [weatherInput, setWeatherInput] = useState(weatherApiKey);
   const [showKey, setShowKey] = useState(false);
+  const [showWeatherKey, setShowWeatherKey] = useState(false);
   const [savedStatus, setSavedStatus] = useState(false);
 
   if (!uiElements.settings) return null;
 
   const handleSave = () => {
     setApiKey(keyInput);
+    setWeatherApiKey(weatherInput);
     setSavedStatus(true);
     setTimeout(() => setSavedStatus(false), 2000);
   };
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300">
-      {/* HUD Scanner Line Effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
          <div className="absolute top-0 left-0 w-full h-[2px] bg-aviation-orange/50 animate-[scan_4s_linear_infinite]"></div>
       </div>
 
       <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
-        {/* Header */}
         <div className="px-8 py-6 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-aviation-orange/10 border border-aviation-orange/30 flex items-center justify-center">
@@ -44,14 +45,12 @@ const SettingsOverlay: React.FC = () => {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-8 space-y-8">
+        <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
           <section className="space-y-6">
             <div className="flex items-center gap-2">
               <Key className="text-aviation-orange" size={16} />
               <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">AI Tactical Link (Gemini API)</h3>
             </div>
-            
             <div className="space-y-4">
               <div className="relative">
                 <input 
@@ -68,17 +67,37 @@ const SettingsOverlay: React.FC = () => {
                   {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              
-              <div className="flex items-start gap-3 p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
-                <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
-                <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                  Critical: This key allows Captain Arjun to perform tactical risk critiques. It is stored locally in your browser's persistent storage. Never share your production keys.
-                </p>
-              </div>
             </div>
           </section>
 
-          <section className="space-y-4 pt-4 border-t border-slate-800">
+          <section className="space-y-6 pt-6 border-t border-slate-800">
+            <div className="flex items-center gap-2">
+              <CloudSun className="text-blue-400" size={16} />
+              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Environmental Data (OpenWeatherMap)</h3>
+            </div>
+            <div className="space-y-4">
+              <div className="relative">
+                <input 
+                  type={showWeatherKey ? "text" : "password"} 
+                  value={weatherInput}
+                  onChange={(e) => setWeatherInput(e.target.value)}
+                  placeholder="Enter OpenWeatherMap API Key..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 focus:border-blue-400 outline-none font-mono pr-12 transition-all"
+                />
+                <button 
+                  onClick={() => setShowWeatherKey(!showWeatherKey)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  {showWeatherKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed italic">
+                Optional: Providing an OpenWeatherMap API key enables high-fidelity localized weather telemetry.
+              </p>
+            </div>
+          </section>
+
+          <section className="space-y-4 pt-6 border-t border-slate-800">
              <div className="flex items-center gap-2">
               <Cpu className="text-blue-400" size={16} />
               <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Environment Status</h3>
@@ -96,7 +115,6 @@ const SettingsOverlay: React.FC = () => {
           </section>
         </div>
 
-        {/* Footer */}
         <div className="px-8 py-6 bg-slate-800/30 border-t border-slate-700 flex justify-end gap-3">
           <button 
             onClick={() => toggleUiElement('settings')}
@@ -116,13 +134,6 @@ const SettingsOverlay: React.FC = () => {
           </button>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes scan {
-          from { top: -10%; }
-          to { top: 110%; }
-        }
-      `}} />
     </div>
   );
 };

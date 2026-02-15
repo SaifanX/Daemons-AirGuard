@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useStore } from '../store';
 import { ShieldCheck, Battery, Radio, Gauge, FileText, Check, X } from 'lucide-react';
@@ -7,14 +8,16 @@ import { PreFlightChecklist as ChecklistType } from '../types';
 const PreFlightChecklist: React.FC = () => {
   const { checklist, toggleChecklistItem, uiElements, toggleUiElement } = useStore();
 
+  // Fixed checklist visibility access on uiElements
   if (!uiElements.checklist) return null;
 
   const items: { key: keyof ChecklistType; label: string; icon: React.ReactNode }[] = [
     { key: 'batteryChecked', label: 'Cell Voltage Stability Check', icon: <Battery size={18} /> },
     { key: 'propellersInspected', label: 'Structural Integrity (Props)', icon: <Gauge size={18} /> },
     { key: 'gpsLock', label: 'GNSS Satellite Lock (>12 Sat)', icon: <Radio size={18} /> },
-    { key: 'regulatoryClearance', label: 'Digital Sky Permit Validation', icon: <FileText size={18} /> },
-    { key: 'firmwareValidated', label: 'System Firmware Hash Check', icon: <ShieldCheck size={18} /> },
+    // Realigned keys to match PreFlightChecklist type definitions in types.ts
+    { key: 'permitChecked', label: 'Digital Sky Permit Validation', icon: <FileText size={18} /> },
+    { key: 'softwareUpdated', label: 'System Firmware Hash Check', icon: <ShieldCheck size={18} /> },
   ];
 
   const allChecked = Object.values(checklist).every(v => v);
