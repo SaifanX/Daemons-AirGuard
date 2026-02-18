@@ -1,4 +1,3 @@
-
 export interface Coordinate {
   lat: number;
   lng: number;
@@ -59,11 +58,10 @@ export interface UiVisibility {
   aiAssistant: boolean;
   settings: boolean;
   isZenMode: boolean;
-  // Added checklist to UiVisibility to fix navigation errors
   checklist: boolean;
+  tacticalHud: boolean; // New tactical radar HUD
 }
 
-// Added tactical scenarios used in SimulationEngine and PlaybackControlHub
 export type SimScenario = 'STANDARD' | 'WINDY' | 'LOW_BATTERY' | 'HEAVY_WEATHER' | 'EMERGENCY_LANDING';
 
 export interface PreFlightChecklist {

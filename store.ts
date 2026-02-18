@@ -1,5 +1,3 @@
-
-// Fixed TypeScript errors by removing window.process access and complying with Gemini API guidelines.
 import { create } from 'zustand';
 import { AppState, WeatherData, TelemetryData, Coordinate, SavedMission, SimScenario, PreFlightChecklist, SidebarTab, UiVisibility } from './types';
 import { calculatePathRisk, intelligentReroute } from './utils/flightLogic';
@@ -66,6 +64,7 @@ export const useStore = create<AppState & { mapCenter: [number, number], setMapC
     settings: false,
     isZenMode: false,
     checklist: false,
+    tacticalHud: true,
   },
   selectedWaypointIndex: null,
   checklist: initialChecklist,
@@ -81,7 +80,7 @@ export const useStore = create<AppState & { mapCenter: [number, number], setMapC
   activeScenario: 'STANDARD',
 
   savedMissions: getSavedMissions(),
-  userApiKey: '', // Complying with guidelines: API key must be from process.env.API_KEY exclusively.
+  userApiKey: '', 
   weatherApiKey: localStorage.getItem(WEATHER_KEY_STORAGE) || '',
 
   setMapCenter: (center) => set({ mapCenter: center }),
@@ -198,6 +197,7 @@ export const useStore = create<AppState & { mapCenter: [number, number], setMapC
         isZenMode: isZen,
         sidebar: !isZen,
         weatherWidget: !isZen,
+        tacticalHud: !isZen,
       }
     }));
   },
@@ -283,7 +283,6 @@ export const useStore = create<AppState & { mapCenter: [number, number], setMapC
   },
 
   setApiKey: (key) => {
-    // API key management is prohibited by guidelines. It must be provided via process.env.API_KEY.
     set({ userApiKey: '' });
   },
 

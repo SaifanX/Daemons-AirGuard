@@ -1,17 +1,17 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import MapEngine from './MapEngine';
 import Sidebar from './Sidebar';
 import RiskMeter from './RiskMeter';
 import AiAssistant from './AiAssistant';
 import WeatherWidget from './WeatherWidget';
+import TacticalHUD from './TacticalHUD';
 import SimulationEngine from './SimulationEngine';
 import PlaybackControlHub from './PlaybackControlHub';
 import { useStore } from '../store';
 import { 
   Hand, Navigation, Search, Undo2, Eye, EyeOff, LayoutGrid, Ghost, 
   Wind, Loader2, Cpu, ChevronRight, ChevronLeft, Shield, 
-  Settings2, MoreVertical, Layers, Keyboard, Command, Monitor, Zap, Info, X
+  Settings2, MoreVertical, Layers, Keyboard, Command, Monitor, Zap, Info, X, Radar
 } from 'lucide-react';
 
 const MissionControl: React.FC = () => {
@@ -299,6 +299,17 @@ const MissionControl: React.FC = () => {
                 </button>
 
                 <button 
+                  onClick={() => toggleUiElement('tacticalHud')}
+                  className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${uiElements.tacticalHud ? 'text-aviation-orange bg-aviation-orange/10' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Radar size={16} />
+                    <span className="text-xs font-bold uppercase tracking-tight">Tactical HUD</span>
+                  </div>
+                  <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] border border-slate-700">H</kbd>
+                </button>
+
+                <button 
                   onClick={() => toggleUiElement('weatherWidget')}
                   className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${uiElements.weatherWidget ? 'text-blue-400 bg-blue-500/10' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
                 >
@@ -342,6 +353,7 @@ const MissionControl: React.FC = () => {
           </>
         )}
         {uiElements.weatherWidget && <WeatherWidget />}
+        {uiElements.tacticalHud && <TacticalHUD />}
       </div>
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-4 w-full max-w-lg px-6">
